@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SALES
+  TECHNICIAN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TaskType {
+  SALES_VISIT
+  TECHNICIAN_VISIT
+}
+
+enum TaskStatus {
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskActivityType {
+  START
+  CLIENT_ARRIVAL
+  MEETING
+  WORK
+  CLIENT_COMPLETED
+  RETURN
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  email     String?
+  phone     String?
+  address   String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  customers Customer[]
+  tasks     Task[]
+}
+
+model User {
+  id           String     @id @default(uuid())
+  companyId    String
+  name         String
+  email        String     @unique
+  phone        String?
+  password     String
+  role         UserRole   @default(SALES)
+  status       UserStatus @default(ACTIVE)
+  profileImage String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  assignedTasks Task[] @relation("AssignedTasks")
+  createdTasks  Task[] @relation("CreatedTasks")
+
+  activities TaskActivity[]
+  comments   TaskComment[]
+
+  @@index([companyId])
+  @@index([companyId, role])
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  @@index([companyId])
+}
+
+model TaskAttachment {
+  id     String @id @default(uuid())
+  taskId String
+
+  fileName String
+  fileUrl  String
+  fileType String?
+  fileSize Int?
+
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model TaskActivityAttachment {
+  id         String @id @default(uuid())
+  activityId String
+
+  fileName String
+  fileUrl  String
+  fileType String?
+  fileSize Int?
+
+  createdAt DateTime @default(now())
+
+  activity TaskActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+}
+
+model Task {
+  id              String       @id @default(uuid())
+  companyId       String
+  assignedToId    String
+  createdById     String
+  customerId      String
+  type            TaskType
+  title           String
+  description     String?
+  status          TaskStatus   @default(ASSIGNED)
+  priority        TaskPriority @default(MEDIUM)
+  scheduledDate   DateTime
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  assignedTo User @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  createdBy User @relation("CreatedTasks", fields: [createdById], references: [id])
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  activities  TaskActivity[]
+  comments    TaskComment[]
+  attachments TaskAttachment[]
+
+  @@index([companyId])
+  @@index([assignedToId])
+  @@index([customerId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model TaskActivity {
+  id         String           @id @default(uuid())
+  taskId     String
+  userId     String
+  type       TaskActivityType
+  latitude   Float?
+  longitude  Float?
+  capturedAt DateTime
+  serverTime DateTime         @default(now())
+  notes      String?
+  createdAt  DateTime         @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  user        User                     @relation(fields: [userId], references: [id])
+  attachments TaskActivityAttachment[]
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([taskId, type])
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+}
