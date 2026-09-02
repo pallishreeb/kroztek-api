@@ -1,9 +1,14 @@
-import { Response } from "express";
+import { NextFunction, Response } from "express";
 
 import { UserService } from "./user.service";
 
-import { AuthRequest } from "../../core/middleware/auth.middleware";
+import { AuthRequest } from "../../types/auth";
 import { AppError } from "../../core/errors/AppError";
+
+import { UserSessionService } from "./user.service";
+
+const userSessionService = new UserSessionService();
+
 
 const userService = new UserService();
 
@@ -226,4 +231,39 @@ if (typeof id !== "string") {
     success: true,
     message: result.message,
   });
+};
+
+
+
+export const getUserSessions = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (req.user.role !== "ADMIN") {
+      throw new AppError(
+        "Admin access required",
+        403
+      );
+    }
+
+    const date =
+      typeof req.query.date === "string"
+        ? req.query.date
+        : undefined;
+
+    const sessions =
+      await userSessionService.getSessions(
+        req.user.companyId,
+        date
+      );
+
+    return res.json({
+      success: true,
+      data: sessions,
+    });
+  } catch (error) {
+    next(error);
+  }
 };

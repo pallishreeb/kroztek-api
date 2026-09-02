@@ -280,3 +280,44 @@ export class UserService {
     };
   }
 }
+
+
+export class UserSessionService {
+  async getSessions(
+    companyId: string,
+    date?: string
+  ) {
+    const where: any = {
+      companyId,
+    };
+
+    if (date) {
+      const start = new Date(`${date}T00:00:00.000Z`);
+      const end = new Date(`${date}T23:59:59.999Z`);
+
+      where.loginAt = {
+        gte: start,
+        lte: end,
+      };
+    }
+
+    const sessions = await prisma.userSession.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        loginAt: "desc",
+      },
+    });
+
+    return sessions;
+  }
+}

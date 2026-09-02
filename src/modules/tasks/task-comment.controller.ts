@@ -6,7 +6,8 @@ import {
 import { AuthRequest } from "../../types/auth";
 import { AppError } from "../../core/errors/AppError";
 import { TaskCommentService } from "./task-comment.service";
-
+import { AuditAction } from "@prisma/client";
+import { createAuditLog } from "../audit/audit.service";
 const taskCommentService =
   new TaskCommentService();
 
@@ -46,6 +47,14 @@ export const createTaskComment =
           taskId,
           message
         );
+await createAuditLog({
+  companyId: req.user.companyId,
+  userId: req.user.id,
+  action: AuditAction.TASK_COMMENT_ADDED,
+  entityType: "TASK",
+  entityId: taskId,
+  description: `${req.user.name} added a comment to a task`,
+});
 
       return res.status(201).json({
         success: true,
@@ -99,7 +108,14 @@ export const updateTaskComment =
           commentId,
           message
         );
-
+      await createAuditLog({
+        companyId: req.user.companyId,
+        userId: req.user.id,
+        action: AuditAction.TASK_COMMENT_UPDATED,
+        entityType: "TASK",
+        entityId: taskId,
+        description: `${req.user.name} updated a comment on a task`,
+      });
       return res.json({
         success: true,
         message:

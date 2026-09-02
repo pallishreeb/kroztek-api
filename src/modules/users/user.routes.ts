@@ -7,6 +7,7 @@ import {
   updateUser,
   updateUserStatus,
   deleteUser,
+  getUserSessions,
 } from "./user.controller";
 
 import {
@@ -18,7 +19,11 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/", getUsers);
-
+router.get(
+  "/sessions",
+  authenticate,
+  getUserSessions
+);
 router.get("/:id", getUser);
 
 router.post("/", createUser);

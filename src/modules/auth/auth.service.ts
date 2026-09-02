@@ -6,10 +6,7 @@ import { AppError } from "../../core/errors/AppError";
 import { env } from "../../config/env";
 
 export class AuthService {
-  async login(
-    email: string,
-    password: string
-  ) {
+  async login(email: string, password: string) {
     const user = await prisma.user.findUnique({
       where: {
         email,
@@ -17,29 +14,17 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError(
-        "Invalid email or password",
-        401
-      );
+      throw new AppError("Invalid email or password", 401);
     }
 
     if (user.status !== "ACTIVE") {
-      throw new AppError(
-        "User account is inactive",
-        403
-      );
+      throw new AppError("User account is inactive", 403);
     }
 
-    const valid = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      throw new AppError(
-        "Invalid email or password",
-        401
-      );
+      throw new AppError("Invalid email or password", 401);
     }
 
     await prisma.user.update({
@@ -51,29 +36,28 @@ export class AuthService {
         lastLoginAt: new Date(),
       },
     });
-
+    await prisma.userSession.create({
+      data: {
+        companyId: user.companyId,
+        userId: user.id,
+        lastSeenAt: new Date(),
+      },
+    });
     const payload = {
       id: user.id,
       companyId: user.companyId,
+      name: user.name,
       email: user.email,
       role: user.role,
     };
 
-    const accessToken = jwt.sign(
-      payload,
-      env.jwtAccessSecret,
-      {
-        expiresIn: "1d",
-      }
-    );
+    const accessToken = jwt.sign(payload, env.jwtAccessSecret, {
+      expiresIn: "1d",
+    });
 
-    const refreshToken = jwt.sign(
-      payload,
-      env.jwtRefreshSecret,
-      {
-        expiresIn: "30d",
-      }
-    );
+    const refreshToken = jwt.sign(payload, env.jwtRefreshSecret, {
+      expiresIn: "30d",
+    });
 
     return {
       user: {
@@ -101,10 +85,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError(
-        "User not found",
-        404
-      );
+      throw new AppError("User not found", 404);
     }
 
     return {
@@ -122,64 +103,67 @@ export class AuthService {
   }
 
   async updatePassword(
-  userId: string,
-  currentPassword: string,
-  newPassword: string
-) {
-  const user = await prisma.user.findUnique({
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.password);
+
+    if (!valid) {
+      throw new AppError("Current password is incorrect", 400);
+    }
+
+    if (currentPassword === newPassword) {
+      throw new AppError(
+        "New password must be different from current password",
+        400,
+      );
+    }
+
+    if (newPassword.length < 8) {
+      throw new AppError("New password must be at least 8 characters", 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: {
+        id: userId,
+      },
+
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    return {
+      message: "Password updated successfully",
+    };
+  }
+
+  async heartbeat(userId: string) {
+  await prisma.userSession.updateMany({
     where: {
-      id: userId,
+      userId,
+      logoutAt: null,
     },
-  });
-
-  if (!user) {
-    throw new AppError(
-      "User not found",
-      404
-    );
-  }
-
-  const valid = await bcrypt.compare(
-    currentPassword,
-    user.password
-  );
-
-  if (!valid) {
-    throw new AppError(
-      "Current password is incorrect",
-      400
-    );
-  }
-
-  if (currentPassword === newPassword) {
-    throw new AppError(
-      "New password must be different from current password",
-      400
-    );
-  }
-
-  if (newPassword.length < 8) {
-    throw new AppError(
-      "New password must be at least 8 characters",
-      400
-    );
-  }
-
-  const hashedPassword =
-    await bcrypt.hash(newPassword, 12);
-
-  await prisma.user.update({
-    where: {
-      id: userId,
-    },
-
     data: {
-      password: hashedPassword,
+      lastSeenAt: new Date(),
     },
   });
 
   return {
-    message: "Password updated successfully",
+    message: "Heartbeat updated",
   };
 }
 }

@@ -3,9 +3,9 @@ import {
   Response,
   NextFunction,
 } from "express";
-
+import { prisma } from "../../core/database/prisma";
 import { AuthService } from "./auth.service";
-import { AuthRequest } from "../../core/middleware/auth.middleware";
+import { AuthRequest } from "../../types/auth";
 const authService = new AuthService();
 
 export const login = async (
@@ -101,4 +101,45 @@ export const updatePassword = async (
     success: true,
     message: result.message,
   });
+};
+
+export const logout = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    await prisma.userSession.updateMany({
+      where: {
+        userId: req.user.id,
+        logoutAt: null,
+      },
+      data: {
+        logoutAt: new Date(),
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const heartbeat = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await authService.heartbeat(req.user.id);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
