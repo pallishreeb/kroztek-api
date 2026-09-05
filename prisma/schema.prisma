@@ -238,6 +238,7 @@ model TaskActivity {
   type       TaskActivityType
   latitude   Float?
   longitude  Float?
+  accuracy   Float?
   capturedAt DateTime
   serverTime DateTime         @default(now())
   notes      String?

@@ -768,6 +768,7 @@ async updateTaskActivity(
     notes?: string;
     latitude?: number | null;
     longitude?: number | null;
+    accuracy?: number | null;
     capturedAt?: string | Date;
   }
 ) {
@@ -973,5 +974,8 @@ async deleteActivityPhoto(
     id: photoId,
   };
 }
+
+
+
 }
 

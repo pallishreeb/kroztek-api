@@ -13,6 +13,7 @@ import {
     updateTaskActivity,
     deleteActivityPhoto,
     deleteTaskActivity,
+    getMyTasks,
 } from "./task.controller";
 import {
   createTaskComment,
@@ -55,9 +56,15 @@ router.post(
   requireRole(UserRole.ADMIN),
   createTask
 );
+router.get(
+  "/my",
+  authenticate,
+  getMyTasks
+);
 // Task Activities
 router.get("/:id/activities", getTaskActivities);
 router.post("/:id/activities", createTaskActivity);
+
 // Update task details
 router.patch(
   "/:id",

@@ -376,7 +376,7 @@ export const updateTaskActivity = async (
 
     const { taskId, activityId } = req.params;
 
-    const { type, notes, latitude, longitude, capturedAt } = req.body;
+    const { type, notes, latitude, longitude,accuracy, capturedAt } = req.body;
 
     let activityType: TaskActivityType | undefined;
 
@@ -399,6 +399,7 @@ export const updateTaskActivity = async (
         notes,
         latitude,
         longitude,
+        accuracy,
         capturedAt,
       },
     );
@@ -492,5 +493,28 @@ export const deleteTaskActivity = async (
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const getMyTasks = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id: userId, companyId, role } = req.user;
+
+    const tasks = await taskService.getTasks(
+      companyId,
+      userId,
+      role
+    );
+
+    return res.json(tasks);
+  } catch (error) {
+    console.error("Get my tasks error:", error);
+
+    return res.status(500).json({
+      message: "Failed to load tasks",
+    });
   }
 };
