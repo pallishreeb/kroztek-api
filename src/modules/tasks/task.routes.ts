@@ -71,7 +71,9 @@ router.get(
 // Create task
 router.post(
   "/",
-  requireRole(UserRole.ADMIN),
+  requireRole(UserRole.ADMIN,    
+    UserRole.SALES,
+    UserRole.TECHNICIAN),
   createTask
 );
 
@@ -84,7 +86,9 @@ router.post("/:id/activities", createTaskActivity);
 // Update task details
 router.patch(
   "/:id",
-  requireRole(UserRole.ADMIN),
+  requireRole(UserRole.ADMIN,    
+    UserRole.SALES,
+    UserRole.TECHNICIAN),
   updateTask
 );
 

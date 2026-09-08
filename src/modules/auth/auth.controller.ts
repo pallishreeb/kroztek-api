@@ -143,3 +143,36 @@ export const heartbeat = async (
     next(error);
   }
 };
+
+export const updateProfile = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const { name, phone } = req.body;
+
+    const result = await authService.updateProfile(
+      req.user.id,
+      {
+        name,
+        phone,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

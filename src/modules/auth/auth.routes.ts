@@ -11,7 +11,9 @@ import {
 import {
   authenticate,
 } from "../../core/middleware/auth.middleware";
-
+import { UserRole } from "@prisma/client";
+import { requireRole } from "../../core/middleware/role.middleware";
+import { updateProfile } from "./auth.controller";
 const router = Router();
 
 router.post(
@@ -41,5 +43,9 @@ router.patch(
   authenticate,
   heartbeat
 );
-
+router.patch(
+  "/profile",
+  authenticate,
+  updateProfile,
+);
 export default router;

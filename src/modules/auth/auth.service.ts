@@ -92,6 +92,7 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      phone:user.phone,
       role: user.role,
       companyId: user.companyId,
 
@@ -165,5 +166,60 @@ export class AuthService {
   return {
     message: "Heartbeat updated",
   };
+}
+async updateProfile(
+  userId: string,
+  data: {
+    name?: string;
+    phone?: string;
+  },
+) {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const updateData: {
+    name?: string;
+    phone?: string | null;
+  } = {};
+
+  if (data.name !== undefined) {
+    const name = data.name.trim();
+
+    if (!name) {
+      throw new AppError("Name is required", 400);
+    }
+
+    updateData.name = name;
+  }
+
+  if (data.phone !== undefined) {
+    updateData.phone = data.phone?.trim() || null;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: {
+      id: userId,
+    },
+
+    data: updateData,
+
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      companyId: true,
+    },
+  });
+
+  return updatedUser;
 }
 }
