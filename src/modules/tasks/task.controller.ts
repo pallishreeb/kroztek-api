@@ -85,22 +85,17 @@ export const createTask = async (
       title,
       description,
       type,
+      natureOfWorkId,
+      natureOfWorkName,
       priority,
       assignedToId,
       scheduledDate,
       customer,
     } = req.body;
 
-    if (
-      !title ||
-      !type ||
-      !priority ||
-      !assignedToId ||
-      !scheduledDate ||
-      !customer?.name
-    ) {
+    if (!priority || !assignedToId || !scheduledDate || !customer?.name) {
       throw new AppError(
-        "Title, type, priority, assignee, scheduled date and customer name are required",
+        "Priority, assignee, scheduled date and customer name are required",
         400,
       );
     }
@@ -109,6 +104,8 @@ export const createTask = async (
       title,
       description,
       type,
+      natureOfWorkId,
+      natureOfWorkName,
       priority,
       assignedToId,
       scheduledDate,
@@ -376,7 +373,7 @@ export const updateTaskActivity = async (
 
     const { taskId, activityId } = req.params;
 
-    const { type, notes, latitude, longitude,accuracy, capturedAt } = req.body;
+    const { type, notes, latitude, longitude, accuracy, capturedAt } = req.body;
 
     let activityType: TaskActivityType | undefined;
 
@@ -496,18 +493,11 @@ export const deleteTaskActivity = async (
   }
 };
 
-export const getMyTasks = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const getMyTasks = async (req: AuthRequest, res: Response) => {
   try {
     const { id: userId, companyId, role } = req.user;
 
-    const tasks = await taskService.getTasks(
-      companyId,
-      userId,
-      role
-    );
+    const tasks = await taskService.getTasks(companyId, userId, role);
 
     return res.json(tasks);
   } catch (error) {
@@ -516,5 +506,62 @@ export const getMyTasks = async (
     return res.status(500).json({
       message: "Failed to load tasks",
     });
+  }
+};
+
+// ------------------------------------------
+// GET CUSTOMERS FOR TASK
+// ------------------------------------------
+
+export const getTaskCustomers = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const customers =
+      await taskService.getTaskCustomers(
+        req.user.companyId
+      );
+
+    return res.json({
+      success: true,
+      data: customers,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// ------------------------------------------
+// GET NATURE OF WORK FOR TASK
+// ------------------------------------------
+
+export const getTaskNatureOfWork = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const natureOfWork =
+      await taskService.getTaskNatureOfWork(
+        req.user.companyId
+      );
+
+    return res.json({
+      success: true,
+      data: natureOfWork,
+    });
+  } catch (error) {
+    next(error);
   }
 };

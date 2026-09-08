@@ -65,6 +65,24 @@ enum AuditAction {
   USER_UPDATED
 }
 
+model NatureOfWork {
+  id        String   @id @default(uuid())
+  companyId String
+  name      String
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  @@unique([companyId, role, name])
+  @@index([companyId, role])
+  @@index([companyId, isActive])
+}
+
 model AuditLog {
   id          String      @id @default(uuid())
   companyId   String
@@ -82,14 +100,15 @@ model AuditLog {
   @@index([companyId, action])
   @@index([entityType, entityId])
 }
+
 model UserSession {
-  id        String    @id @default(uuid())
-  companyId String
-  userId    String
-  loginAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  companyId  String
+  userId     String
+  loginAt    DateTime  @default(now())
   lastSeenAt DateTime?
-  logoutAt  DateTime?
-  createdAt DateTime  @default(now())
+  logoutAt   DateTime?
+  createdAt  DateTime  @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -98,6 +117,7 @@ model UserSession {
   @@index([userId, loginAt])
   @@index([userId, logoutAt])
 }
+
 model Company {
   id        String   @id @default(uuid())
   name      String
@@ -109,11 +129,12 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  customers Customer[]
-  tasks     Task[]
-  auditLogs AuditLog[]
-  userSessions UserSession[]
+  users         User[]
+  customers     Customer[]
+  tasks         Task[]
+  auditLogs     AuditLog[]
+  userSessions  UserSession[]
+  natureOfWorks NatureOfWork[]
 }
 
 model User {
@@ -138,7 +159,7 @@ model User {
   activities TaskActivity[]
   comments   TaskComment[]
   auditLogs  AuditLog[]
-  sessions UserSession[]
+  sessions   UserSession[]
 
   @@index([companyId])
   @@index([companyId, role])
@@ -151,6 +172,8 @@ model Customer {
   contactName String?
   phone       String?
   email       String?
+  designation String?
+  department  String?
   address     String?
   latitude    Float?
   longitude   Float?
@@ -202,9 +225,10 @@ model Task {
   assignedToId    String
   createdById     String
   customerId      String
-  type            TaskType
-  title           String
+  type            TaskType?
+  title           String?
   description     String?
+  natureOfWorkId  String?
   status          TaskStatus   @default(ASSIGNED)
   priority        TaskPriority @default(MEDIUM)
   scheduledDate   DateTime
@@ -220,6 +244,8 @@ model Task {
 
   customer Customer @relation(fields: [customerId], references: [id])
 
+  natureOfWork NatureOfWork? @relation(fields: [natureOfWorkId], references: [id])
+
   activities  TaskActivity[]
   comments    TaskComment[]
   attachments TaskAttachment[]
@@ -227,6 +253,7 @@ model Task {
   @@index([companyId])
   @@index([assignedToId])
   @@index([customerId])
+  @@index([natureOfWorkId])
   @@index([scheduledDate])
   @@index([status])
 }

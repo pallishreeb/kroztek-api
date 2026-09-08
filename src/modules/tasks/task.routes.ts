@@ -14,6 +14,8 @@ import {
     deleteActivityPhoto,
     deleteTaskActivity,
     getMyTasks,
+    getTaskCustomers,
+    getTaskNatureOfWork,
 } from "./task.controller";
 import {
   createTaskComment,
@@ -38,6 +40,22 @@ router.get(
   requireRole(UserRole.ADMIN),
   getTasks
 );
+router.get(
+  "/customers",
+  authenticate,
+  getTaskCustomers
+);
+
+router.get(
+  "/nature-of-work",
+  authenticate,
+  getTaskNatureOfWork
+);
+router.get(
+  "/my",
+  authenticate,
+  getMyTasks
+);
 
 // Get single task
 router.get(
@@ -56,11 +74,9 @@ router.post(
   requireRole(UserRole.ADMIN),
   createTask
 );
-router.get(
-  "/my",
-  authenticate,
-  getMyTasks
-);
+
+
+
 // Task Activities
 router.get("/:id/activities", getTaskActivities);
 router.post("/:id/activities", createTaskActivity);
