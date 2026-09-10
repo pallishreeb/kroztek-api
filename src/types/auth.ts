@@ -5,6 +5,7 @@ export interface AuthUser {
   id: string;
   companyId: string;
   email: string;
+  name: string;
   role: UserRole;
 }
 

@@ -1,12 +1,22 @@
-import { Request, Response } from "express";
-import { getDashboardStats, getRecentAuditLogs } from "./audit.service";
+import { Response } from "express";
+import {
+  getDashboardStats,
+  getRecentAuditLogs,
+} from "./audit.service";
 import { AuthRequest } from "../../types/auth";
 
 export const getRecentActivity = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        code: "AUTH_REQUIRED",
+        message: "Authentication required",
+      });
+    }
+
     const companyId = req.user.companyId;
     const limit = Number(req.query.limit) || 10;
 
@@ -31,7 +41,14 @@ export const getDashboardStatsController = async (
   res: Response
 ) => {
   try {
-    const companyId = req?.user?.companyId;
+    if (!req.user) {
+      return res.status(401).json({
+        code: "AUTH_REQUIRED",
+        message: "Authentication required",
+      });
+    }
+
+    const companyId = req.user.companyId;
 
     const stats = await getDashboardStats(companyId);
 

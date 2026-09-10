@@ -6,6 +6,7 @@ import {
 import { prisma } from "../../core/database/prisma";
 import { AuthService } from "./auth.service";
 import { AuthRequest } from "../../types/auth";
+
 const authService = new AuthService();
 
 export const login = async (
@@ -109,6 +110,13 @@ export const logout = async (
   next: NextFunction
 ) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     await prisma.userSession.updateMany({
       where: {
         userId: req.user.id,
@@ -127,13 +135,24 @@ export const logout = async (
     next(error);
   }
 };
+
 export const heartbeat = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const result = await authService.heartbeat(req.user.id);
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const result =
+      await authService.heartbeat(
+        req.user.id
+      );
 
     return res.json({
       success: true,
@@ -159,13 +178,14 @@ export const updateProfile = async (
 
     const { name, phone } = req.body;
 
-    const result = await authService.updateProfile(
-      req.user.id,
-      {
-        name,
-        phone,
-      }
-    );
+    const result =
+      await authService.updateProfile(
+        req.user.id,
+        {
+          name,
+          phone,
+        }
+      );
 
     return res.status(200).json({
       success: true,

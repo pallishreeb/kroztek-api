@@ -6,6 +6,7 @@ import {
   TaskType,
   UserRole,
   TaskActivityType,
+  Prisma
 } from "@prisma/client";
 
 type CreateTaskInput = {
@@ -473,445 +474,416 @@ async updateTask(
   // FIND EXISTING TASK
   // ------------------------------------------
 
-  const existing =
-    await prisma.task.findFirst({
-      where: {
-        id: taskId,
-        companyId,
-      },
-    });
+  const existing = await prisma.task.findFirst({
+    where: {
+      id: taskId,
+      companyId,
+    },
+  });
 
   if (!existing) {
-    throw new AppError(
-      "Task not found",
-      404
-    );
+    throw new AppError("Task not found", 404);
   }
 
-  return prisma.$transaction(
-    async (tx) => {
+  return prisma.$transaction(async (tx) => {
+    // ------------------------------------------
+    // VALIDATE ASSIGNED USER
+    // ------------------------------------------
 
-      // ------------------------------------------
-      // VALIDATE ASSIGNED USER
-      // ------------------------------------------
-
-      if (
-        input.assignedToId !== undefined &&
-        input.assignedToId !== null
-      ) {
-        const assignedUser =
-          await tx.user.findFirst({
-            where: {
-              id: input.assignedToId,
-              companyId,
-              status: "ACTIVE",
-            },
-          });
-
-        if (!assignedUser) {
-          throw new AppError(
-            "Assigned user not found or inactive",
-            400
-          );
-        }
-
-        const assigningToSelf =
-          assignedUser.id === userId;
-
-        const isValidNormalAssignee =
-          assignedUser.role ===
-            UserRole.SALES ||
-          assignedUser.role ===
-            UserRole.TECHNICIAN;
-
-        if (
-          !isValidNormalAssignee &&
-          !(
-            role === UserRole.ADMIN &&
-            assigningToSelf
-          )
-        ) {
-          throw new AppError(
-            "Tasks can only be assigned to Sales, Technician, or Admin self",
-            400
-          );
-        }
-      }
-
-      // ------------------------------------------
-      // VALIDATE EXISTING CUSTOMER
-      // ------------------------------------------
-
-      if (
-        input.customerId !== undefined &&
-        input.customerId !== null
-      ) {
-        const customer =
-          await tx.customer.findFirst({
-            where: {
-              id: input.customerId,
-              companyId,
-            },
-          });
-
-        if (!customer) {
-          throw new AppError(
-            "Customer not found",
-            404
-          );
-        }
-      }
-
-      // ------------------------------------------
-      // CUSTOMER
-      // Existing customer OR create new customer
-      // ------------------------------------------
-
-      let customerId =
-        input.customerId !== undefined
-          ? input.customerId
-          : existing.customerId;
-
-      if (input.customer?.name?.trim()) {
-
-        const customerName =
-          input.customer.name.trim();
-
-        // Find existing customer
-        let customer =
-          await tx.customer.findFirst({
-            where: {
-              companyId,
-              name: {
-                equals: customerName,
-                mode: "insensitive",
-              },
-            },
-          });
-
-        // Create if not found
-        if (!customer) {
-          customer =
-            await tx.customer.create({
-              data: {
-                companyId,
-                name: customerName,
-
-                contactName:
-                  input.customer.contactName
-                    ?.trim() || null,
-
-                phone:
-                  input.customer.phone
-                    ?.trim() || null,
-
-                email:
-                  input.customer.email
-                    ?.trim() || null,
-
-                designation:
-                  input.customer.designation
-                    ?.trim() || null,
-
-                department:
-                  input.customer.department
-                    ?.trim() || null,
-
-                address:
-                  input.customer.address
-                    ?.trim() || null,
-              },
-            });
-        }
-
-        customerId = customer.id;
-      }
-
-      // ------------------------------------------
-      // NATURE OF WORK
-      // ------------------------------------------
-
-      let natureOfWorkId =
-        input.natureOfWorkId !== undefined
-          ? input.natureOfWorkId
-          : existing.natureOfWorkId;
-
-      // If user entered a new Nature of Work
-      if (
-        !natureOfWorkId &&
-        input.natureOfWorkName?.trim()
-      ) {
-        const name =
-          input.natureOfWorkName.trim();
-
-        // Check existing
-        const existingNatureOfWork =
-          await tx.natureOfWork.findFirst({
-            where: {
-              companyId,
-              name: {
-                equals: name,
-                mode: "insensitive",
-              },
-              isActive: true,
-            },
-          });
-
-        if (existingNatureOfWork) {
-          natureOfWorkId =
-            existingNatureOfWork.id;
-        } else {
-          // Create new
-          const newNatureOfWork =
-            await tx.natureOfWork.create({
-              data: {
-                companyId,
-                name,
-
-                role:
-                  input.type ===
-                  "TECHNICIAN_VISIT"
-                    ? UserRole.TECHNICIAN
-                    : UserRole.SALES,
-              },
-            });
-
-          natureOfWorkId =
-            newNatureOfWork.id;
-        }
-      }
-
-      // ------------------------------------------
-      // VALIDATE EXISTING NATURE OF WORK
-      // ------------------------------------------
-
-      if (
-        input.natureOfWorkId !== undefined &&
-        input.natureOfWorkId !== null
-      ) {
-        const natureOfWork =
-          await tx.natureOfWork.findFirst({
-            where: {
-              id: input.natureOfWorkId,
-              companyId,
-              isActive: true,
-            },
-          });
-
-        if (!natureOfWork) {
-          throw new AppError(
-            "Nature of work not found or inactive",
-            400
-          );
-        }
-      }
-
-      // ------------------------------------------
-      // UPDATE TASK
-      // ------------------------------------------
-
-      return tx.task.update({
+    if (
+      input.assignedToId !== undefined &&
+      input.assignedToId !== null
+    ) {
+      const assignedUser = await tx.user.findFirst({
         where: {
-          id: taskId,
+          id: input.assignedToId,
+          companyId,
+          status: "ACTIVE",
         },
+      });
 
-        data: {
-          // Assignee
-          ...(input.assignedToId !==
-            undefined && {
-            assignedToId:
-              input.assignedToId,
-          }),
+      if (!assignedUser) {
+        throw new AppError(
+          "Assigned user not found or inactive",
+          400
+        );
+      }
 
-          // Customer
-          ...(customerId !==
-            existing.customerId && {
-            customerId,
-          }),
+      const assigningToSelf =
+        assignedUser.id === userId;
 
-          // Nature of Work
-          ...(natureOfWorkId !==
-            existing.natureOfWorkId && {
-            natureOfWorkId,
-          }),
+      const isValidNormalAssignee =
+        assignedUser.role === UserRole.SALES ||
+        assignedUser.role === UserRole.TECHNICIAN;
 
-          // Type
-          ...(input.type !== undefined && {
-            type: input.type,
-          }),
+      if (
+        !isValidNormalAssignee &&
+        !(
+          role === UserRole.ADMIN &&
+          assigningToSelf
+        )
+      ) {
+        throw new AppError(
+          "Tasks can only be assigned to Sales, Technician, or Admin self",
+          400
+        );
+      }
+    }
 
-          // Title
-          ...(input.title !== undefined && {
-            title:
-              input.title?.trim() || null,
-          }),
+    // ------------------------------------------
+    // VALIDATE EXISTING CUSTOMER
+    // ------------------------------------------
 
-          // Description
-          ...(input.description !==
-            undefined && {
-            description:
-              input.description?.trim() ||
-              null,
-          }),
-
-          // Priority
-          ...(input.priority !== undefined && {
-            priority: input.priority,
-          }),
-
-          // Scheduled date/time
-          ...(input.scheduledDate !==
-            undefined && {
-            scheduledDate: new Date(
-              input.scheduledDate
-            ),
-          }),
+    if (
+      input.customerId !== undefined &&
+      input.customerId !== null
+    ) {
+      const customer = await tx.customer.findFirst({
+        where: {
+          id: input.customerId,
+          companyId,
         },
+      });
 
-        include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              role: true,
-            },
-          },
+      if (!customer) {
+        throw new AppError(
+          "Customer not found",
+          404
+        );
+      }
+    }
 
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              contactName: true,
-              phone: true,
-              email: true,
-              designation: true,
-              department: true,
-              address: true,
-            },
-          },
+    // ------------------------------------------
+    // CUSTOMER
+    // Existing customer OR create new customer
+    // ------------------------------------------
 
-          natureOfWork: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-            },
+    let customerId =
+      input.customerId !== undefined
+        ? input.customerId
+        : existing.customerId;
+
+    if (input.customer?.name?.trim()) {
+      const customerName =
+        input.customer.name.trim();
+
+      // Find existing customer
+      let customer = await tx.customer.findFirst({
+        where: {
+          companyId,
+          name: {
+            equals: customerName,
+            mode: "insensitive",
           },
         },
       });
+
+      // Create if not found
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: {
+            companyId,
+            name: customerName,
+            contactName:
+              input.customer.contactName
+                ?.trim() || null,
+            phone:
+              input.customer.phone?.trim() ||
+              null,
+            email:
+              input.customer.email?.trim() ||
+              null,
+            designation:
+              input.customer.designation
+                ?.trim() || null,
+            department:
+              input.customer.department
+                ?.trim() || null,
+            address:
+              input.customer.address
+                ?.trim() || null,
+          },
+        });
+      }
+
+      customerId = customer.id;
     }
-  );
+
+    // ------------------------------------------
+    // NATURE OF WORK
+    // ------------------------------------------
+
+    let natureOfWorkId =
+      input.natureOfWorkId !== undefined
+        ? input.natureOfWorkId
+        : existing.natureOfWorkId;
+
+    // If user entered a new Nature of Work
+    if (
+      !natureOfWorkId &&
+      input.natureOfWorkName?.trim()
+    ) {
+      const name =
+        input.natureOfWorkName.trim();
+
+      // Check existing
+      const existingNatureOfWork =
+        await tx.natureOfWork.findFirst({
+          where: {
+            companyId,
+            name: {
+              equals: name,
+              mode: "insensitive",
+            },
+            isActive: true,
+          },
+        });
+
+      if (existingNatureOfWork) {
+        natureOfWorkId =
+          existingNatureOfWork.id;
+      } else {
+        // Create new
+        const newNatureOfWork =
+          await tx.natureOfWork.create({
+            data: {
+              companyId,
+              name,
+              role:
+                input.type === "TECHNICIAN_VISIT"
+                  ? UserRole.TECHNICIAN
+                  : UserRole.SALES,
+            },
+          });
+
+        natureOfWorkId =
+          newNatureOfWork.id;
+      }
+    }
+
+    // ------------------------------------------
+    // VALIDATE EXISTING NATURE OF WORK
+    // ------------------------------------------
+
+    if (
+      input.natureOfWorkId !== undefined &&
+      input.natureOfWorkId !== null
+    ) {
+      const natureOfWork =
+        await tx.natureOfWork.findFirst({
+          where: {
+            id: input.natureOfWorkId,
+            companyId,
+            isActive: true,
+          },
+        });
+
+      if (!natureOfWork) {
+        throw new AppError(
+          "Nature of work not found or inactive",
+          400
+        );
+      }
+    }
+
+    // ------------------------------------------
+    // BUILD UPDATE DATA
+    // ------------------------------------------
+
+    const updateData: Prisma.TaskUpdateInput = {};
+
+    // ------------------------------------------
+    // ASSIGNEE
+    // ------------------------------------------
+
+    if (
+      input.assignedToId !== undefined &&
+      input.assignedToId !== null &&
+      input.assignedToId !== existing.assignedToId
+    ) {
+      updateData.assignedTo = {
+        connect: {
+          id: input.assignedToId,
+        },
+      };
+    }
+
+    // ------------------------------------------
+    // CUSTOMER
+    // ------------------------------------------
+
+      if (
+        customerId !== undefined &&
+        customerId !== existing.customerId &&
+        customerId !== null
+      ) {
+        updateData.customer = {
+          connect: {
+            id: customerId,
+          },
+        };
+      }
+
+    // ------------------------------------------
+    // NATURE OF WORK
+    // ------------------------------------------
+
+    if (
+      natureOfWorkId !== undefined &&
+      natureOfWorkId !== existing.natureOfWorkId
+    ) {
+      if (natureOfWorkId === null) {
+        updateData.natureOfWork = {
+          disconnect: true,
+        };
+      } else {
+        updateData.natureOfWork = {
+          connect: {
+            id: natureOfWorkId,
+          },
+        };
+      }
+    }
+
+    // ------------------------------------------
+    // TYPE
+    // ------------------------------------------
+
+    if (input.type !== undefined) {
+      updateData.type = input.type;
+    }
+
+    // ------------------------------------------
+    // TITLE
+    // ------------------------------------------
+
+    if (input.title !== undefined) {
+      updateData.title =
+        input.title?.trim() || null;
+    }
+
+    // ------------------------------------------
+    // DESCRIPTION
+    // ------------------------------------------
+
+    if (input.description !== undefined) {
+      updateData.description =
+        input.description?.trim() || null;
+    }
+
+    // ------------------------------------------
+    // PRIORITY
+    // ------------------------------------------
+
+    if (input.priority !== undefined) {
+      updateData.priority = input.priority;
+    }
+
+    // ------------------------------------------
+    // SCHEDULED DATE/TIME
+    // ------------------------------------------
+
+    if (input.scheduledDate !== undefined) {
+      updateData.scheduledDate =
+        new Date(input.scheduledDate);
+    }
+
+    // ------------------------------------------
+    // UPDATE TASK
+    // ------------------------------------------
+
+    return tx.task.update({
+      where: {
+        id: taskId,
+      },
+
+      data: updateData,
+
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+          },
+        },
+
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            contactName: true,
+            phone: true,
+            email: true,
+            designation: true,
+            department: true,
+            address: true,
+          },
+        },
+
+        natureOfWork: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
+  });
 }
 
   // ------------------------------------------
   // UPDATE STATUS
   // ------------------------------------------
 
-  async updateStatus(
-    companyId: string,
-    taskId: string,
-    status: TaskStatus,
-    rejectionReason?: string
-  ) {
+async updateStatus(
+  companyId: string,
+  taskId: string,
+  status: TaskStatus,
+  rejectionReason?: string
+) {
+  const task = await prisma.task.findFirst({
+    where: {
+      id: taskId,
+      companyId,
+    },
+  });
 
-    let natureOfWorkId = input.natureOfWorkId;
-
-if (natureOfWorkId) {
-  const natureOfWork =
-    await prisma.natureOfWork.findFirst({
-      where: {
-        id: natureOfWorkId,
-        companyId,
-        isActive: true,
-      },
-    });
-
-  if (!natureOfWork) {
+  if (!task) {
     throw new AppError(
-      "Nature of work not found or inactive",
+      "Task not found",
+      404
+    );
+  }
+
+  if (
+    status === TaskStatus.REJECTED &&
+    !rejectionReason?.trim()
+  ) {
+    throw new AppError(
+      "Rejection reason is required",
       400
     );
   }
+
+  return prisma.task.update({
+    where: {
+      id: taskId,
+    },
+
+    data: {
+      status,
+
+      rejectionReason:
+        status === TaskStatus.REJECTED
+          ? rejectionReason
+          : null,
+    },
+  });
 }
-
-if (
-  !natureOfWorkId &&
-  input.natureOfWorkName?.trim()
-) {
-  const name =
-    input.natureOfWorkName.trim();
-
-  const existingNatureOfWork =
-    await prisma.natureOfWork.findFirst({
-      where: {
-        companyId,
-        name,
-        isActive: true,
-      },
-    });
-
-  if (existingNatureOfWork) {
-    natureOfWorkId =
-      existingNatureOfWork.id;
-  } else {
-    const newNatureOfWork =
-      await prisma.natureOfWork.create({
-        data: {
-          companyId,
-          name,
-          role:
-            input.type === "TECHNICIAN_VISIT"
-              ? UserRole.TECHNICIAN
-              : UserRole.SALES,
-        },
-      });
-
-    natureOfWorkId =
-      newNatureOfWork.id;
-  }
-}
-    const task =
-      await prisma.task.findFirst({
-        where: {
-          id: taskId,
-          companyId,
-        },
-      });
-
-    if (!task) {
-      throw new AppError(
-        "Task not found",
-        404
-      );
-    }
-
-    if (
-      status === TaskStatus.REJECTED &&
-      !rejectionReason?.trim()
-    ) {
-      throw new AppError(
-        "Rejection reason is required",
-        400
-      );
-    }
-
-    return prisma.task.update({
-      where: {
-        id: taskId,
-      },
-
-      data: {
-        status,
-
-        rejectionReason:
-          status === TaskStatus.REJECTED
-            ? rejectionReason
-            : null,
-      },
-    });
-  }
 
   // ------------------------------------------
   // DELETE TASK

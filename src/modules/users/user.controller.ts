@@ -1,15 +1,12 @@
 import { NextFunction, Response } from "express";
 
 import { UserService } from "./user.service";
-
 import { AuthRequest } from "../../types/auth";
 import { AppError } from "../../core/errors/AppError";
 
 import { UserSessionService } from "./user.service";
 
 const userSessionService = new UserSessionService();
-
-
 const userService = new UserService();
 
 export const getUsers = async (
@@ -23,10 +20,9 @@ export const getUsers = async (
     );
   }
 
-  const users =
-    await userService.getUsers(
-      req.user.companyId
-    );
+  const users = await userService.getUsers(
+    req.user.companyId
+  );
 
   return res.status(200).json({
     success: true,
@@ -39,12 +35,6 @@ export const getUser = async (
   req: AuthRequest,
   res: Response
 ) => {
-const { id } = req.params;
-
-if (typeof id !== "string") {
-  throw new AppError("Invalid user ID", 400);
-}
-
   if (!req.user) {
     throw new AppError(
       "Authentication required",
@@ -52,11 +42,21 @@ if (typeof id !== "string") {
     );
   }
 
-  const user =
-    await userService.getUser(
-      req.user.companyId,
-      id
+  const id = Array.isArray(req.params.id)
+    ? req.params.id[0]
+    : req.params.id;
+
+  if (!id) {
+    throw new AppError(
+      "Invalid user ID",
+      400
     );
+  }
+
+  const user = await userService.getUser(
+    req.user.companyId,
+    id
+  );
 
   return res.status(200).json({
     success: true,
@@ -78,10 +78,10 @@ export const createUser = async (
 
   const {
     name,
-  email,
-  phone,
-  password,
-  role,
+    email,
+    phone,
+    password,
+    role,
   } = req.body;
 
   if (
@@ -113,17 +113,16 @@ export const createUser = async (
     );
   }
 
-  const user =
-    await userService.createUser(
-      req.user.companyId,
-      {
-        name,
-        email: email.toLowerCase().trim(),
-        phone,
-        password,
-        role,
-      }
-    );
+  const user = await userService.createUser(
+    req.user.companyId,
+    {
+      name,
+      email: email.toLowerCase().trim(),
+      phone,
+      password,
+      role,
+    }
+  );
 
   return res.status(201).json({
     success: true,
@@ -136,11 +135,6 @@ export const updateUser = async (
   req: AuthRequest,
   res: Response
 ) => {
-    const { id } = req.params;
-
-if (typeof id !== "string") {
-  throw new AppError("Invalid user ID", 400);
-}
   if (!req.user) {
     throw new AppError(
       "Authentication required",
@@ -148,12 +142,22 @@ if (typeof id !== "string") {
     );
   }
 
-  const user =
-    await userService.updateUser(
-      req.user.companyId,
-      id,
-      req.body
+  const id = Array.isArray(req.params.id)
+    ? req.params.id[0]
+    : req.params.id;
+
+  if (!id) {
+    throw new AppError(
+      "Invalid user ID",
+      400
     );
+  }
+
+  const user = await userService.updateUser(
+    req.user.companyId,
+    id,
+    req.body
+  );
 
   return res.status(200).json({
     success: true,
@@ -162,58 +166,10 @@ if (typeof id !== "string") {
   });
 };
 
-export const updateUserStatus =
-  async (
-    req: AuthRequest,
-    res: Response
-  ) => {
-    const { id } = req.params;
-
-if (typeof id !== "string") {
-  throw new AppError("Invalid user ID", 400);
-}
-    if (!req.user) {
-      throw new AppError(
-        "Authentication required",
-        401
-      );
-    }
-
-    const { status } = req.body;
-
-    if (
-      status !== "ACTIVE" &&
-      status !== "INACTIVE"
-    ) {
-      throw new AppError(
-        "Invalid status",
-        400
-      );
-    }
-
-    const user =
-      await userService.updateStatus(
-        req.user.companyId,
-        id,
-        status
-      );
-
-    return res.status(200).json({
-      success: true,
-      message: "User status updated successfully",
-      data: user,
-    });
-  };
-
-export const deleteUser = async (
+export const updateUserStatus = async (
   req: AuthRequest,
   res: Response
 ) => {
-    const { id } = req.params;
-
-if (typeof id !== "string") {
-  throw new AppError("Invalid user ID", 400);
-}
   if (!req.user) {
     throw new AppError(
       "Authentication required",
@@ -221,11 +177,68 @@ if (typeof id !== "string") {
     );
   }
 
-  const result =
-    await userService.deleteUser(
-      req.user.companyId,
-      id
+  const id = Array.isArray(req.params.id)
+    ? req.params.id[0]
+    : req.params.id;
+
+  if (!id) {
+    throw new AppError(
+      "Invalid user ID",
+      400
     );
+  }
+
+  const { status } = req.body;
+
+  if (
+    status !== "ACTIVE" &&
+    status !== "INACTIVE"
+  ) {
+    throw new AppError(
+      "Invalid status",
+      400
+    );
+  }
+
+  const user = await userService.updateStatus(
+    req.user.companyId,
+    id,
+    status
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: "User status updated successfully",
+    data: user,
+  });
+};
+
+export const deleteUser = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  if (!req.user) {
+    throw new AppError(
+      "Authentication required",
+      401
+    );
+  }
+
+  const id = Array.isArray(req.params.id)
+    ? req.params.id[0]
+    : req.params.id;
+
+  if (!id) {
+    throw new AppError(
+      "Invalid user ID",
+      400
+    );
+  }
+
+  const result = await userService.deleteUser(
+    req.user.companyId,
+    id
+  );
 
   return res.status(200).json({
     success: true,
@@ -233,14 +246,19 @@ if (typeof id !== "string") {
   });
 };
 
-
-
 export const getUserSessions = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    if (!req.user) {
+      throw new AppError(
+        "Authentication required",
+        401
+      );
+    }
+
     if (req.user.role !== "ADMIN") {
       throw new AppError(
         "Admin access required",

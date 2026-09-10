@@ -1,9 +1,7 @@
 import { Response, NextFunction } from "express";
 
 import { TaskService } from "./task.service";
-
 import { AuthRequest } from "../../types/auth";
-
 import { AppError } from "../../core/errors/AppError";
 import { AuditAction } from "@prisma/client";
 import {
@@ -14,6 +12,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { createAuditLog } from "../audit/audit.service";
+
 const taskService = new TaskService();
 
 export const getTasks = async (
@@ -52,7 +51,7 @@ export const getTask = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     const task = await taskService.getTask(
       req.user.companyId,
@@ -111,6 +110,7 @@ export const createTask = async (
       scheduledDate,
       customer,
     });
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -119,6 +119,7 @@ export const createTask = async (
       entityId: task.id,
       description: `Task "${task.title}" was created`,
     });
+
     return res.status(201).json({
       success: true,
       message: "Task created successfully",
@@ -143,7 +144,7 @@ export const updateTask = async (
       throw new AppError("Only admin can update task details", 403);
     }
 
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     const task = await taskService.updateTask(
       req.user.companyId,
@@ -152,6 +153,7 @@ export const updateTask = async (
       id,
       req.body,
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -160,6 +162,7 @@ export const updateTask = async (
       entityId: task.id,
       description: `${req.user.name} updated task "${task.title}"`,
     });
+
     res.json({
       success: true,
       message: "Task updated successfully",
@@ -180,7 +183,7 @@ export const updateTaskStatus = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     const { status, rejectionReason } = req.body;
 
@@ -194,6 +197,7 @@ export const updateTaskStatus = async (
       status,
       rejectionReason,
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -202,6 +206,7 @@ export const updateTaskStatus = async (
       entityId: task.id,
       description: `${req.user.name} changed "${task.title}" to ${status}`,
     });
+
     res.json({
       success: true,
       message: "Task status updated successfully",
@@ -226,7 +231,7 @@ export const deleteTask = async (
       throw new AppError("Only admin can delete tasks", 403);
     }
 
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     const result = await taskService.deleteTask(req.user.companyId, id);
 
@@ -249,7 +254,7 @@ export const getTaskActivities = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     const activities = await taskService.getTaskActivities(
       req.user.companyId,
@@ -278,7 +283,7 @@ export const createTaskActivity = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { id } = req.params;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     const { type, latitude, longitude, capturedAt, notes } = req.body;
 
@@ -299,6 +304,7 @@ export const createTaskActivity = async (
         notes,
       },
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -307,6 +313,7 @@ export const createTaskActivity = async (
       entityId: id,
       description: `${req.user.name} added a ${activity.type} activity to a task`,
     });
+
     return res.status(201).json({
       success: true,
       message: "Task activity created successfully",
@@ -327,7 +334,13 @@ export const addActivityPhotos = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { taskId, activityId } = req.params;
+    const taskId = Array.isArray(req.params.taskId)
+      ? req.params.taskId[0]
+      : req.params.taskId;
+
+    const activityId = Array.isArray(req.params.activityId)
+      ? req.params.activityId[0]
+      : req.params.activityId;
 
     const files = req.files as Express.Multer.File[];
 
@@ -343,6 +356,7 @@ export const addActivityPhotos = async (
       req.user.role,
       files,
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -351,6 +365,7 @@ export const addActivityPhotos = async (
       entityId: taskId,
       description: `${req.user.name} added photo(s) to a task activity`,
     });
+
     return res.status(201).json({
       success: true,
       message: "Activity photos uploaded successfully",
@@ -371,7 +386,13 @@ export const updateTaskActivity = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { taskId, activityId } = req.params;
+    const taskId = Array.isArray(req.params.taskId)
+      ? req.params.taskId[0]
+      : req.params.taskId;
+
+    const activityId = Array.isArray(req.params.activityId)
+      ? req.params.activityId[0]
+      : req.params.activityId;
 
     const { type, notes, latitude, longitude, accuracy, capturedAt } = req.body;
 
@@ -400,6 +421,7 @@ export const updateTaskActivity = async (
         capturedAt,
       },
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -408,6 +430,7 @@ export const updateTaskActivity = async (
       entityId: taskId,
       description: `${req.user.name} updated a task activity`,
     });
+
     return res.json({
       success: true,
       message: "Task activity updated successfully",
@@ -428,7 +451,17 @@ export const deleteActivityPhoto = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { taskId, activityId, photoId } = req.params;
+    const taskId = Array.isArray(req.params.taskId)
+      ? req.params.taskId[0]
+      : req.params.taskId;
+
+    const activityId = Array.isArray(req.params.activityId)
+      ? req.params.activityId[0]
+      : req.params.activityId;
+
+    const photoId = Array.isArray(req.params.photoId)
+      ? req.params.photoId[0]
+      : req.params.photoId;
 
     const result = await taskService.deleteActivityPhoto(
       req.user.companyId,
@@ -438,6 +471,7 @@ export const deleteActivityPhoto = async (
       activityId,
       photoId,
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -446,6 +480,7 @@ export const deleteActivityPhoto = async (
       entityId: taskId,
       description: `${req.user.name} deleted a photo from a task activity`,
     });
+
     return res.json({
       success: true,
       message: "Activity photo deleted successfully",
@@ -466,7 +501,13 @@ export const deleteTaskActivity = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const { taskId, activityId } = req.params;
+    const taskId = Array.isArray(req.params.taskId)
+      ? req.params.taskId[0]
+      : req.params.taskId;
+
+    const activityId = Array.isArray(req.params.activityId)
+      ? req.params.activityId[0]
+      : req.params.activityId;
 
     const result = await taskService.deleteTaskActivity(
       req.user.companyId,
@@ -475,6 +516,7 @@ export const deleteTaskActivity = async (
       taskId,
       activityId,
     );
+
     await createAuditLog({
       companyId: req.user.companyId,
       userId: req.user.id,
@@ -483,6 +525,7 @@ export const deleteTaskActivity = async (
       entityId: taskId,
       description: `${req.user.name} deleted a task activity`,
     });
+
     return res.json({
       success: true,
       message: "Task activity deleted successfully",
@@ -495,6 +538,13 @@ export const deleteTaskActivity = async (
 
 export const getMyTasks = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     const { id: userId, companyId, role } = req.user;
 
     const tasks = await taskService.getTasks(companyId, userId, role);
@@ -523,10 +573,7 @@ export const getTaskCustomers = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const customers =
-      await taskService.getTaskCustomers(
-        req.user.companyId
-      );
+    const customers = await taskService.getTaskCustomers(req.user.companyId);
 
     return res.json({
       success: true,
@@ -536,7 +583,6 @@ export const getTaskCustomers = async (
     next(error);
   }
 };
-
 
 // ------------------------------------------
 // GET NATURE OF WORK FOR TASK
@@ -552,10 +598,9 @@ export const getTaskNatureOfWork = async (
       throw new AppError("Unauthorized", 401);
     }
 
-    const natureOfWork =
-      await taskService.getTaskNatureOfWork(
-        req.user.companyId
-      );
+    const natureOfWork = await taskService.getTaskNatureOfWork(
+      req.user.companyId,
+    );
 
     return res.json({
       success: true,

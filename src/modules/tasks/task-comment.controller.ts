@@ -8,6 +8,7 @@ import { AppError } from "../../core/errors/AppError";
 import { TaskCommentService } from "./task-comment.service";
 import { AuditAction } from "@prisma/client";
 import { createAuditLog } from "../audit/audit.service";
+
 const taskCommentService =
   new TaskCommentService();
 
@@ -25,7 +26,10 @@ export const createTaskComment =
         );
       }
 
-      const { taskId } = req.params;
+      const taskId = Array.isArray(req.params.taskId)
+        ? req.params.taskId[0]
+        : req.params.taskId;
+
       const { message } = req.body;
 
       if (
@@ -47,14 +51,15 @@ export const createTaskComment =
           taskId,
           message
         );
-await createAuditLog({
-  companyId: req.user.companyId,
-  userId: req.user.id,
-  action: AuditAction.TASK_COMMENT_ADDED,
-  entityType: "TASK",
-  entityId: taskId,
-  description: `${req.user.name} added a comment to a task`,
-});
+
+      await createAuditLog({
+        companyId: req.user.companyId,
+        userId: req.user.id,
+        action: AuditAction.TASK_COMMENT_ADDED,
+        entityType: "TASK",
+        entityId: taskId,
+        description: `${req.user.name} added a comment to a task`,
+      });
 
       return res.status(201).json({
         success: true,
@@ -81,10 +86,13 @@ export const updateTaskComment =
         );
       }
 
-      const {
-        taskId,
-        commentId,
-      } = req.params;
+      const taskId = Array.isArray(req.params.taskId)
+        ? req.params.taskId[0]
+        : req.params.taskId;
+
+      const commentId = Array.isArray(req.params.commentId)
+        ? req.params.commentId[0]
+        : req.params.commentId;
 
       const { message } = req.body;
 
@@ -108,6 +116,7 @@ export const updateTaskComment =
           commentId,
           message
         );
+
       await createAuditLog({
         companyId: req.user.companyId,
         userId: req.user.id,
@@ -116,6 +125,7 @@ export const updateTaskComment =
         entityId: taskId,
         description: `${req.user.name} updated a comment on a task`,
       });
+
       return res.json({
         success: true,
         message:
@@ -141,10 +151,13 @@ export const deleteTaskComment =
         );
       }
 
-      const {
-        taskId,
-        commentId,
-      } = req.params;
+      const taskId = Array.isArray(req.params.taskId)
+        ? req.params.taskId[0]
+        : req.params.taskId;
+
+      const commentId = Array.isArray(req.params.commentId)
+        ? req.params.commentId[0]
+        : req.params.commentId;
 
       const result =
         await taskCommentService.deleteComment(
